@@ -43,6 +43,19 @@ Certifique-se de que as seguintes APIs estejam ativadas no seu projeto através 
 - Google Earth Engine API
 - Service Usage API
 
-## 5. Registro no Earth Engine
+## 6. Instalação no QGIS
+
+Para que o plugin funcione corretamente dentro do QGIS, siga estes passos:
+
+1. **Localize a pasta de plugins**:
+   - No Windows: `%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\`
+2. **Copie a pasta**: Mova a pasta `ideflor_gee_downloader` deste repositório para o local acima.
+3. **Verifique as dependências**: Abra o **OSGeo4W Shell** (instalado com o QGIS) como administrador e execute:
+   ```bash
+   python -m pip install earthengine-api requests python-dotenv
+   ```
+4. **Ative o plugin**: No QGIS, vá em `Complementos > Gerenciar e Instalar Complementos` e marque o **IDEFLOR Geo Downloader**.
+
+## 7. Registro no Earth Engine
 
 Contas de serviço novas devem estar registradas para uso com o Earth Engine. Caso encontre erros de acesso, verifique o registro no portal do [Earth Engine Cloud Projects](https://code.earthengine.google.com/register).

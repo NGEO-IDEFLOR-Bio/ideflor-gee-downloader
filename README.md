@@ -1,59 +1,38 @@
-# IDEFLOR - Sistema de Download de Imagens Orbitais
+# IDEFLOR - Geo Downloader (Plugin QGIS)
 
-Este repositório fornece ferramentas para a automatização do processo de download de imagens dos satélites Landsat e Sentinel via Google Earth Engine (GEE). O sistema foi desenvolvido para operar localmente, oferecendo interfaces de linha de comando (CLI) e gráfica (GUI).
+Ferramenta universal para automação do download de imagens orbitais (Landsat e Sentinel) via Google Earth Engine (GEE), integrada diretamente ao QGIS.
 
 ## 1. Estrutura do Projeto
 
-A organização dos diretórios e arquivos principais é detalhada a seguir:
+- `ideflor_gee_downloader/`: Pasta principal do Plugin do QGIS.
+    - `scripts/`: Lógica de GEE.
+    - `secrets/`: Chaves JSON de Contas de Serviço (não versionado).
+    - `.env`: Configurações de acesso ao GEE (não versonado).
+- `requirements.txt`: Dependências Python.
 
-- `cli.py`: Interface de Linha de Comando para processamento em lote.
-- `gui.py`: Interface Gráfica baseada em CustomTkinter.
-- `scripts/`:
-    - `gee_utils.py`: Módulos de integração com a API do Google Earth Engine.
-    - `db_utils.py`: Utilitários para consulta de geometrias de áreas de interesse.
-- `secrets/`: Diretório destinado ao armazenamento de chaves JSON de Contas de Serviço (não versionado).
-- `downloads/`: Diretório padrão para armazenamento dos arquivos GeoTIFF resultantes.
+## 2. Configuração e Instalação
 
-## 2. Configuração do Ambiente
+### 2.1 O Plugin do QGIS
+1. Siga as instruções de configuração da Conta de Serviço do Google em [CONFIGURACAO.md](CONFIGURACAO.md).
+2. Copie a pasta `ideflor_gee_downloader` para o diretório de plugins do seu perfil do QGIS (`%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\`).
+3. Ative o complemento em **Gerenciar e Instalar Complementos**.
 
-### 2.1 Requisitos de Software
-- Python 3.x
-- Dependências listadas em `requirements.txt`
-
-### 2.2 Guia de Configuração
-Para instruções detalhadas sobre a criação da Conta de Serviço no Google Cloud, habilitação das APIs e configuração das variáveis de ambiente, consulte o arquivo [CONFIGURACAO.md](CONFIGURACAO.md).
-
-### 2.3 Credenciais do Google Earth Engine
-O sistema utiliza Contas de Serviço para autenticação. É necessário configurar o arquivo `.env` na raiz do projeto baseado no modelo em `env.example`.
-
-## 3. Interfaces de Operação
-
-### 3.1 Interface de Linha de Comando (CLI)
-A CLI permite a execução de downloads automatizados para múltiplos anos e áreas.
-
-**Sintaxe Básica:**
+### 2.2 Requisitos
+Instale as dependências no Python do QGIS (OSGeo4W Shell):
 ```bash
-python cli.py --car [CODIGO_CAR] --sat [landsat|sentinel] --years [INTERVALO_ANOS]
+python -m pip install earthengine-api requests python-dotenv
 ```
 
-**Exemplo de uso (Landsat):**
-```bash
-python cli.py --car PA-1504802-FCEA8FAD... --sat landsat --years 2023-2024 --semester 2
-```
+## 3. Funcionalidades
 
-### 3.2 Interface Gráfica (GUI)
-A GUI oferece um ambiente visual intuitivo para usuários que preferem não utilizar o terminal.
+- **Busca por Área Geográfica**: Use a extensão atual do seu mapa ou de qualquer camada (Vetor/Raster) do projeto.
+- **Sentinel-2 Flexível**: Downloads semestrais ou mensais específicos.
+- **Landsat**: Downloads semestrais.
+- **Integração Visual**: Os arquivos baixados (GeoTIFF) são carregados automaticamente no QGIS.
 
-**Acionamento:**
-```bash
-python gui.py
-```
+## 4. Desenvolvedor
 
-A interface adapta-se dinamicamente ao satélite selecionado, permitindo a definição de semestres para Landsat ou meses específicos para Sentinel.
-
-## 4. Testes e Validação
-
-Para informações detalhadas sobre como validar a instalação e o funcionamento das ferramentas, consulte o arquivo [TESTES.md](TESTES.md).
-
-## 5. Notas de Segurança
-O diretório `secrets/` e o arquivo `.env` contêm informações sensíveis e não devem ser incluídos em sistemas de controle de versão. Este projeto já possui as devidas exclusões configuradas.
+**Samuel Santos (IDEFLOR)**
+- [LinkedIn](https://www.linkedin.com/in/samuelsantos-amb/)
+- [GitHub](https://github.com/samuel-c-santos)
+- [Site Pessoal](https://samuelsantos.site/)

@@ -6,27 +6,44 @@ import logging
 from dotenv import load_dotenv
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def initialize_gee():
     """Initializes Google Earth Engine using a service account credentials file."""
-    load_dotenv()
+    # Check if already initialized for this project
+    try:
+        if ee.data._initialized:
+            return
+    except:
+        pass
+    # Look for .env in current or parent directory of this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    plugin_dir = os.path.dirname(script_dir)
+    env_path = os.path.join(plugin_dir, '.env')
+    
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
     
     project_id = os.getenv('GEE_PROJECT_ID')
     credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_PATH')
     
+    # If credentials_path is relative, make it absolute relative to plugin_dir
+    if credentials_path and not os.path.isabs(credentials_path):
+        test_path = os.path.join(plugin_dir, credentials_path)
+        if os.path.exists(test_path):
+            credentials_path = test_path
+
     if credentials_path and os.path.exists(credentials_path):
-        # Using explicit Service Account credentials
         try:
             credentials = ee.ServiceAccountCredentials(None, credentials_path)
             ee.Initialize(credentials, project=project_id)
-            logger.info(f"GEE Initialized with Service Account for project: {project_id}")
+            logger.info(f"GEE Initialized with local Service Account for project: {project_id}")
         except Exception as e:
             logger.error(f"Failed to initialize GEE with Service Account: {e}")
             raise
     else:
-        # Fallback to default credentials
         try:
             ee.Initialize(project=project_id)
             logger.info(f"GEE Initialized with default credentials for project: {project_id}")
