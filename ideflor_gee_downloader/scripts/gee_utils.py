@@ -51,7 +51,7 @@ def initialize_gee():
             logger.error(f"Failed to initialize GEE: {e}")
             raise
 
-def get_sentinel_image(region, year, start_month, end_month):
+def get_sentinel_image(region, year, start_month, end_month, method='median'):
     """Retrieves a median Sentinel-2 SR image for a given region and time range."""
     import calendar
     _, last_day = calendar.monthrange(year, end_month)
@@ -70,10 +70,19 @@ def get_sentinel_image(region, year, start_month, end_month):
         logger.warning(f"No Sentinel image found for {year}/{start_month}-{end_month} (<10% clouds)")
         return None
 
+    if method == 'best':
+        image = collection.sort('CLOUDY_PIXEL_PERCENTAGE').first()
+        try:
+            date = ee.Date(image.get('system:time_start')).format('YYYY-MM-DD').getInfo()
+            logger.info(f"  ✨ Melhor imagem Sentinel selecionada: {date}")
+        except:
+            pass
+        return image
+    
     logger.info(f"Found {count} Sentinel images for {year}/{start_month:02d}-{end_month:02d}. Creating median composite...")
     return collection.median()
 
-def get_landsat_image(region, year, semester):
+def get_landsat_image(region, year, semester, method='median'):
     """Retrieves a median Landsat image for a given region and semester."""
     if semester == 1:
         start_date = f"{year}-01-01"
@@ -104,6 +113,15 @@ def get_landsat_image(region, year, semester):
     if count == 0:
         logger.warning(f"No Landsat image found for {year} S{semester}")
         return None, None
+
+    if method == 'best':
+        image = collection.sort('CLOUD_COVER').first()
+        try:
+            date = ee.Date(image.get('system:time_start')).format('YYYY-MM-DD').getInfo()
+            logger.info(f"  ✨ Melhor imagem Landsat selecionada: {date}")
+        except:
+            pass
+        return image.select(band_options), band_options
 
     logger.info(f"Found {count} Landsat images for {year} S{semester}. Creating median composite...")
     image = collection.median().select(band_options)

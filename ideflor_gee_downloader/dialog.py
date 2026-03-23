@@ -155,6 +155,12 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         self.buffer_spin.setValue(2.0)
         advanced_layout.addWidget(self.buffer_spin, 0, 1)
         
+        advanced_layout.addWidget(QLabel("Método de Composição:"), 1, 0)
+        self.method_combo = QComboBox()
+        self.method_combo.addItem("Mediana (Mais limpa)", "median")
+        self.method_combo.addItem("Melhor Imagem (Menor Nuvens)", "best")
+        advanced_layout.addWidget(self.method_combo, 1, 1)
+        
         layout.addWidget(self.advanced_group)
 
         # --- Footer ---
@@ -260,6 +266,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             initialize_gee()
             
             buffer_factor = self.buffer_spin.value()
+            comp_method = self.method_combo.currentData()
 
             # Output dir
             output_dir = self.output_entry.text()
@@ -311,7 +318,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                         selected_months = [i+1 for i, cb in enumerate(self.month_checks) if cb.isChecked()]
                         for month in selected_months:
                             self.logger.info(f"  📅 {year}-{month:02d} (Sentinel)")
-                            img = get_sentinel_image(region, year, month, month)
+                            img = get_sentinel_image(region, year, month, month, method=comp_method)
                             if img:
                                 self._download_and_load(img, region, year, f"{month:02d}", car_dir, 10, "Sentinel", buffer_factor)
                     else:
@@ -319,7 +326,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                         for sem in [1, 2]:
                             start_m, end_m = (1, 6) if sem == 1 else (7, 12)
                             self.logger.info(f"  📅 {year} S{sem} (Sentinel)")
-                            img = get_sentinel_image(region, year, start_m, end_m)
+                            img = get_sentinel_image(region, year, start_m, end_m, method=comp_method)
                             if img:
                                 self._download_and_load(img, region, year, f"S{sem}", car_dir, 10, "Sentinel", buffer_factor)
                 else:
@@ -328,7 +335,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                     semesters = [1] if sem_choice == "1º Semestre" else [2] if sem_choice == "2º Semestre" else [1, 2]
                     for sem in semesters:
                         self.logger.info(f"  📅 {year} S{sem} (Landsat)")
-                        img, _ = get_landsat_image(region, year, sem)
+                        img, _ = get_landsat_image(region, year, sem, method=comp_method)
                         if img:
                             self._download_and_load(img, region, year, f"S{sem}", car_dir, 30, "Landsat", buffer_factor)
 

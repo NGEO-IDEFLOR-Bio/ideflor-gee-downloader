@@ -7,6 +7,7 @@ check_gee_assets.ipynb
 **/secrets/
 **/__pycache__/
 downloads/
+**/doc-cbers/
 
 # Python
 __pycache__/
