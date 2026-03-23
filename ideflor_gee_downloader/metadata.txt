@@ -2,10 +2,18 @@
 name=IDEFLOR Geo Downloader
 qgisMinimumVersion=3.0
 description=Plugin para download de imagens Sentinel e Landsat via GEE. Desenvolvido por Samuel Santos.
-about=Desenvolvido por Samuel Santos (IDEFLOR).
- LinkedIn: https://www.linkedin.com/in/samuelsantos-amb/
- GitHub: https://github.com/samuel-c-santos
- Site: https://samuelsantos.site/
+about=<b>IDEFLOR Geo Downloader</b>
+  <i>Plugin para download de imagens orbitais (Sentinel e Landsat) via GEE.</i>
+  <br><br>
+  <b>Recursos Principais:</b>
+  - Seleção por Extensão (Mapa ou Camadas)
+  - Fator de Buffer Configurável (Advanced)
+  - Interpolação Cúbica Automática.
+  <br><br>
+  <b>Suporte:</b> Samuel Santos (IDEFLOR)
+  - <a href="https://www.linkedin.com/in/samuelsantos-amb/">LinkedIn</a>
+  - <a href="https://github.com/samuel-c-santos">GitHub</a>
+  - <a href="https://samuelsantos.site/">Site Pessoal</a>
 version=1.0
 author=Samuel Santos (IDEFLOR)
 email=samuel@samuelsantos.site
@@ -14,5 +22,6 @@ homepage=https://samuelsantos.site/
 category=Web
 tags=gee, landsat, sentinel, ideflor, download, samuel santos
 icon=icon.png
+screenshots=icon.png
 experimental=False
 deprecated=False
