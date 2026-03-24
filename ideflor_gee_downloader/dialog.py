@@ -5,7 +5,7 @@ import logging
 from qgis.PyQt.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QLineEdit, QPushButton, QComboBox, QCheckBox, 
                                QProgressBar, QTextEdit, QFrame, QGridLayout,
-                               QGroupBox, QRadioButton, QFileDialog, QDoubleSpinBox)
+                               QGroupBox, QRadioButton, QFileDialog, QDoubleSpinBox, QMessageBox)
 from qgis.PyQt.QtCore import Qt, pyqtSignal, QObject
 from qgis.core import (QgsProject, QgsRasterLayer, QgsMessageLog, Qgis, 
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -21,11 +21,13 @@ if scripts_dir not in sys.path:
 import ee
 try:
     from scripts.gee_utils import (initialize_gee, get_sentinel_image, get_landsat_image, 
-                                 get_download_url, download_image)
+                                 get_download_url, download_image, get_cbers_image_inpe, 
+                                 check_cbers_deps)
 except ImportError:
     try:
         from gee_utils import (initialize_gee, get_sentinel_image, get_landsat_image, 
-                             get_download_url, download_image)
+                             get_download_url, download_image, get_cbers_image_inpe, 
+                             check_cbers_deps)
     except ImportError as e:
         QgsMessageLog.logMessage(f"Erro ao importar scripts: {e}", "IDEFLOR", Qgis.MessageLevel.Critical)
 
@@ -76,8 +78,8 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         # Satellite
         params_layout.addWidget(QLabel("Satélite:"), 0, 0)
         self.sat_combo = QComboBox()
-        self.sat_combo.addItems(["Landsat", "Sentinel"])
-        self.sat_combo.currentTextChanged.connect(self.update_dynamic_fields)
+        self.sat_combo.addItems(["Sentinel", "Landsat", "CBERS-4A (MUX/WPM)"])
+        self.sat_combo.currentTextChanged.connect(self.on_satellite_changed)
         params_layout.addWidget(self.sat_combo, 0, 1)
 
         # Years
@@ -163,6 +165,24 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         
         layout.addWidget(self.advanced_group)
 
+        # --- Dependency Alert ---
+        has_deps, dep_error = check_cbers_deps()
+        if not has_deps:
+            self.dep_group = QGroupBox("Ferramentas Faltando")
+            dep_layout = QVBoxLayout()
+            self.dep_group.setLayout(dep_layout)
+            
+            label = QLabel(f"⚠️ Erro nas ferramentas CBERS: {dep_error}")
+            label.setWordWrap(True)
+            dep_layout.addWidget(label)
+            
+            self.install_btn = QPushButton("FORÇAR REINSTALAÇÃO CBERS")
+            self.install_btn.clicked.connect(self.install_dependencies)
+            self.install_btn.setStyleSheet("background-color: #d35400; color: white; font-weight: bold;")
+            dep_layout.addWidget(self.install_btn)
+            
+            layout.addWidget(self.dep_group)
+
         # --- Footer ---
         footer_layout = QHBoxLayout()
         self.progress_bar = QProgressBar()
@@ -188,12 +208,12 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             if item.widget():
                 item.widget().deleteLater()
 
-        if sat == "Landsat":
+        if "Landsat" in sat:
             self.dynamic_layout.addWidget(QLabel("Selecionar Semestre:"))
             self.semester_combo = QComboBox()
             self.semester_combo.addItems(["1º Semestre", "2º Semestre", "Ambos"])
             self.dynamic_layout.addWidget(self.semester_combo)
-        else: # Sentinel
+        else: # Sentinel or CBERS
             self.sentinel_mode_semester = QRadioButton("Composição por Semestre")
             self.sentinel_mode_year = QRadioButton("Análise Anual (Meses)")
             self.sentinel_mode_semester.setChecked(True)
@@ -227,6 +247,19 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         if dir_path:
             self.output_entry.setText(dir_path)
 
+    def on_satellite_changed(self, text):
+        """Update UI options based on selected satellite."""
+        is_cbers = "CBERS" in text
+        # Composition method is not used for CBERS (uses best scene STAC)
+        self.method_combo.setEnabled(not is_cbers)
+        if is_cbers:
+            self.method_combo.setToolTip("CBERS utiliza a melhor cena disponível (menor cobertura de nuvens) do INPE.")
+        else:
+            self.method_combo.setToolTip("")
+        
+        # Also update dynamic fields for satellite-specific options
+        self.update_dynamic_fields(text)
+
     def append_log(self, message, level):
         self.log_text.append(message)
         self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
@@ -249,6 +282,51 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         self.progress_bar.setValue(100)
         self.download_btn.setEnabled(True)
 
+    def install_dependencies(self):
+        """Installs the required CBERS dependencies using pip."""
+        reply = QMessageBox.question(self, "Instalação", 
+                                   "Isso irá instalar as bibliotecas cbers4asat, rasterio e outras no seu QGIS. \n\n"
+                                   "O processo ocorrerá em uma JANELA PRETA (Terminal) separada. \n"
+                                   "Deseja continuar?", QMessageBox.Yes | QMessageBox.No)
+        
+        if reply != QMessageBox.Yes:
+            return
+
+        self.install_btn.setEnabled(False)
+        self.install_btn.setText("INSTALANDO... AGUARDE")
+        self.append_log("⏳ Iniciando instalação de dependências via Terminal externo...", 0)
+        
+        def run_install():
+            import sys
+            import io
+            try:
+                # We use internal pip in-process to guarantee it runs inside 
+                # the CURRENT QGIS environment, completely bypassing Windows subprocess issues.
+                from pip._internal import main as pip_main
+                from unittest.mock import patch
+                
+                args = ["install", "--upgrade", "--user", "cbers4asat", "rasterio", "geopandas", "shapely", "scikit-image", "numpy<2.0", "geomet", "geojson"]
+                
+                # QGIS threads don't have stdout/stderr, which crashes pip when it tries to print progress
+                dummy_out = io.StringIO()
+                dummy_err = io.StringIO()
+                
+                # pip_main may call sys.exit, which would crash QGIS. We patch it.
+                # We also patch stdout and stderr to prevent the NoneType error
+                with patch.object(sys, 'exit', return_value=None), \
+                     patch.object(sys, 'stdout', dummy_out), \
+                     patch.object(sys, 'stderr', dummy_err):
+                    result = pip_main(args)
+                
+                if result == 0 or result is None:
+                    self.log_signal.log_received.emit("✅ Instalação concluída na memória do QGIS! Por favor, REINICIE o QGIS agora.", 0)
+                else:
+                    self.log_signal.log_received.emit(f"⚠️ O instalador retornou o código {result}. Tente reiniciar o QGIS.", 1)
+            except Exception as e:
+                self.log_signal.log_received.emit(f"❌ Erro na instalação interna: {e}", 2)
+
+        threading.Thread(target=run_install, daemon=True).start()
+
     def run_process(self):
         try:
             # Inputs
@@ -267,6 +345,8 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             
             buffer_factor = self.buffer_spin.value()
             comp_method = self.method_combo.currentData()
+            
+            is_cbers = "cbers" in sat.lower()
 
             # Output dir
             output_dir = self.output_entry.text()
@@ -312,7 +392,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
 
             for year in years:
                 if not self._is_running: break
-                if sat == 'sentinel':
+                if "sentinel" in sat.lower():
                     if self.sentinel_mode_year.isChecked():
                         # Monthly mode
                         selected_months = [i+1 for i, cb in enumerate(self.month_checks) if cb.isChecked()]
@@ -329,6 +409,22 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                             img = get_sentinel_image(region, year, start_m, end_m, method=comp_method)
                             if img:
                                 self._download_and_load(img, region, year, f"S{sem}", car_dir, 10, "Sentinel", buffer_factor)
+                elif is_cbers:
+                    # CBERS (INPE)
+                    if self.sentinel_mode_year.isChecked():
+                        selected_months = [i+1 for i, cb in enumerate(self.month_checks) if cb.isChecked()]
+                        if selected_months:
+                            self.logger.info(f"  📅 {year} (Meses selecionados) - CBERS via INPE")
+                            final_path = get_cbers_image_inpe(region, year, selected_months, car_dir, scale_factor=buffer_factor)
+                            if final_path and self.add_to_canvas_check.isChecked():
+                                self.log_signal.load_layer.emit(final_path, os.path.basename(final_path))
+                    else:
+                        for sem in [1, 2]:
+                            self.logger.info(f"  📅 {year} S{sem} - CBERS via INPE")
+                            months = [1,2,3,4,5,6] if sem == 1 else [7,8,9,10,11,12]
+                            final_path = get_cbers_image_inpe(region, year, months, car_dir, scale_factor=buffer_factor)
+                            if final_path and self.add_to_canvas_check.isChecked():
+                                self.log_signal.load_layer.emit(final_path, os.path.basename(final_path))
                 else:
                     # Landsat
                     sem_choice = self.semester_combo.currentText()

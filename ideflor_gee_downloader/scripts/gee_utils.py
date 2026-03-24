@@ -4,9 +4,57 @@ import os
 import requests
 import logging
 from dotenv import load_dotenv
+import calendar
+try:
+    from qgis.core import QgsMessageLog, Qgis
+except ImportError:
+    QgsMessageLog = None
+import site
+import sys
+import traceback
 
 # Setup logging
 logger = logging.getLogger(__name__)
+
+def check_cbers_deps():
+    """Dynamically checks if CBERS dependencies are available and functional."""
+    # Ensure user site-packages are always in path for QGIS 3.x
+    try:
+        user_site = site.getusersitepackages()
+        if os.path.exists(user_site) and user_site not in sys.path:
+            sys.path.insert(0, user_site) # Insert at front to override conflicting plugins
+    except:
+        pass
+
+    try:
+        # Test imports one by one to find the culprit
+        import cbers4asat
+        import rasterio
+        import geopandas
+        import shapely
+        import skimage
+        import geomet
+        import geojson
+        return True, ""
+    except ImportError as e:
+        return False, f"{e}"
+    except Exception as e:
+        return False, f"Erro de carregamento: {e}"
+
+# Initial check for the UI (button visibility)
+HAS_CBERS_DEPS, DEPS_ERROR = check_cbers_deps()
+
+# If deps are OK, import the necessary classes to the global scope
+try:
+    import rasterio
+    import geopandas as gpd
+    from cbers4asat import Cbers4aAPI, Collections as coll
+    from cbers4asat.tools import rgbn_composite, clip as raster_clip
+    from shapely.geometry import Polygon
+except Exception as e:
+    logger.error(f"❌ Erro crítico ao carregar classes globais: {traceback.format_exc()}")
+    if QgsMessageLog:
+        QgsMessageLog.logMessage(f"❌ Erro crítico ao carregar classes globais: {e}", "IDEFLOR", Qgis.MessageLevel.Critical)
 
 def initialize_gee():
     """Initializes Google Earth Engine using a service account credentials file."""
@@ -166,3 +214,161 @@ def download_image(url, output_path):
     except Exception as e:
         logger.error(f"❌ Error downloading {output_path}: {e}")
         return False
+
+def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
+    """Downloads and processes CBERS-4A imagery from INPE STAC with an optional border."""
+    has_deps, err = check_cbers_deps()
+    if not has_deps:
+        logger.error(f"❌ Erro nas dependências CBERS: {err}")
+        if QgsMessageLog:
+            QgsMessageLog.logMessage(f"❌ Erro nas dependências CBERS: {err}", "IDEFLOR", Qgis.MessageLevel.Critical)
+        return None
+    try:
+        inpe_email = os.getenv('INPE_EMAIL')
+        if not inpe_email:
+            logger.error("❌ INPE_EMAIL não configurado no arquivo .env")
+            return None
+
+        # Convert GEE region to BBOX [west, south, east, north]
+        bounds = region_ee.bounds().coordinates().get(0).getInfo()
+        lons = [p[0] for p in bounds]
+        lats = [p[1] for p in bounds]
+        
+        # Calculate center and span with scale_factor (border)
+        xmid = (min(lons) + max(lons)) / 2
+        ymid = (min(lats) + max(lats)) / 2
+        xrange = (max(lons) - min(lons)) * scale_factor / 2
+        yrange = (max(lats) - min(lats)) * scale_factor / 2
+        
+        bbox = [xmid - xrange, ymid - yrange, xmid + xrange, ymid + yrange]
+        logger.info(f"📐 BBOX com Borda ({scale_factor}x): {bbox}")
+        
+        # Shapely polygon for clipping later (using the same expanded area)
+        poly_aoi = Polygon([ 
+            (bbox[0], bbox[1]), (bbox[2], bbox[1]), 
+            (bbox[2], bbox[3]), (bbox[0], bbox[3]) 
+        ])
+
+        api = Cbers4aAPI(inpe_email)
+        
+        start_date = datetime.date(year, min(months), 1)
+        _, last_day = calendar.monthrange(year, max(months))
+        end_date = datetime.date(year, max(months), last_day)
+
+        logger.info(f"🔍 Buscando CBERS-4A no INPE ({start_date} a {end_date})...")
+        
+        # We search for MUX (20m) and WPM (8m/2m)
+        products = api.query(
+            location=bbox,
+            initial_date=start_date,
+            end_date=end_date,
+            cloud=100, # We will sort by cloud later
+            limit=50,
+            collections=['CBERS4A_WPM_L4_DN']
+        )
+        
+        if not products or not products.get('features'):
+            logger.warning(f"⚠️ Nenhuma imagem CBERS encontrada para {year} no período selecionado.")
+            return None
+
+        # Sort by cloud cover and take the best
+        features = products['features']
+        # Note: 'properties' might contain 'cloud_cover' or 'eo:cloud_cover'
+        def get_cloud(f):
+            p = f.get('properties', {})
+            return p.get('cloud_cover', p.get('eo:cloud_cover', 100))
+        
+        features.sort(key=get_cloud)
+        best_feature = features[0]
+        scene_id = best_feature['id']
+        cloud_val = get_cloud(best_feature)
+        date_str = best_feature['properties'].get('datetime', '').split('T')[0]
+        
+        logger.info(f"✨ Melhor cena CBERS encontrada: {scene_id} ({date_str}, {cloud_val}% nuvens)")
+
+        # Download bands
+        # MUX: B5(R), B6(G), B7(B), B8(NIR)
+        # WPM: B1(B), B2(G), B3(R), B4(NIR), B0(PAN)
+        bands = ['red', 'green', 'blue', 'nir'] # cbers4asat aliases
+        
+        temp_dir = os.path.join(output_dir, "temp_cbers")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        logger.info(f"📥 Baixando bandas para {scene_id}...")
+        api.download(
+            products={'type': 'FeatureCollection', 'features': [best_feature]},
+            bands=bands,
+            outdir=temp_dir,
+            with_folder=True
+        )
+
+        # Find the downloaded files
+        scene_subdir = os.path.join(temp_dir, scene_id)
+        if not os.path.exists(scene_subdir):
+            # Sometimes the folder name differs slightly
+            subdirs = [d for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d))]
+            if subdirs: scene_subdir = os.path.join(temp_dir, subdirs[0])
+
+        files = os.listdir(scene_subdir)
+        b_red = next((os.path.join(scene_subdir, f) for f in files if 'BAND3' in f or 'BAND5' in f), None)
+        b_green = next((os.path.join(scene_subdir, f) for f in files if 'BAND2' in f or 'BAND6' in f), None)
+        b_blue = next((os.path.join(scene_subdir, f) for f in files if 'BAND1' in f or 'BAND7' in f), None)
+        b_nir = next((os.path.join(scene_subdir, f) for f in files if 'BAND4' in f or 'BAND8' in f), None)
+
+        if not all([b_red, b_green, b_blue]):
+            logger.error("❌ Erro ao localizar bandas baixadas.")
+            return None
+
+        # Composite
+        composite_path = os.path.join(output_dir, f"CBERS_{scene_id}_STACK.tif")
+        logger.info(f"🎨 Criando composição RGB...")
+        rgbn_composite(
+            red=b_red, green=b_green, blue=b_blue, nir=b_nir,
+            filename=os.path.basename(composite_path),
+            outdir=output_dir
+        )
+        
+        # Clip to AOI
+        final_filename = f"CBERS_{year}_{scene_id[:10]}.tif"
+        final_path = os.path.join(output_dir, final_filename)
+        logger.info(f"✂️ Recortando para área de interesse...")
+        
+        try:
+            import geopandas as gpd
+            # Get raster CRS
+            with rasterio.open(composite_path) as src:
+                raster_crs = src.crs or "EPSG:3857" # fallback
+            
+            # Reproject AOI to raster CRS
+            gdf_aoi = gpd.GeoDataFrame(index=[0], crs="EPSG:4326", geometry=[poly_aoi])
+            gdf_aoi = gdf_aoi.to_crs(raster_crs)
+            poly_mask = gdf_aoi.geometry.iloc[0]
+            
+            raster_clip(
+                raster=composite_path,
+                mask=poly_mask,
+                filename=final_filename,
+                outdir=output_dir
+            )
+        except Exception as clip_err:
+            logger.warning(f"⚠️ Erro no recorte projetado: {clip_err}. Tentando recorte simples...")
+            raster_clip(
+                raster=composite_path,
+                mask=poly_aoi,
+                filename=final_filename,
+                outdir=output_dir
+            )
+        
+        # Cleanup
+        try:
+            import shutil
+            shutil.rmtree(temp_dir)
+            if os.path.exists(composite_path): os.remove(composite_path)
+        except:
+            pass
+            
+        return final_path
+
+    except Exception as e:
+        logger.error(f"❌ Erro no processamento CBERS: {e}")
+        return None

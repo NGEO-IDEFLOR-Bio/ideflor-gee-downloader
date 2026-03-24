@@ -1,4 +1,7 @@
 earthengine-api
 requests
 python-dotenv
-customtkinter
+cbers4asat
+geopandas
+rasterio
+shapely
