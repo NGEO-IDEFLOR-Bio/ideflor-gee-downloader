@@ -42,8 +42,17 @@ O plugin utiliza bibliotecas avançadas (Google Earth Engine e INPE) que não v�
 *   **Área de Interesse**: Você pode definir a área de download usando a tela atual do seu mapa ou selecionando a extensão de uma camada (shapefile ou raster) que já esteja no seu projeto.
 *   **Buffer**: Se a imagem parecer muito "justa" na borda, use as **Opções Avançadas** para aumentar o "Fator de Buffer".
 *   **CBERS-4A**: Para usar o CBERS, é necessário criar uma conta gratuita no portal **DGI do INPE**:
-    - **Cadastre-se aqui**: [INPE Explorer / Registro](http://www.dgi.inpe.br/catalogo/explore)
-    - Configure o seu `INPE_EMAIL` e `INPE_PASSWORD` no arquivo `.env` para que o plugin consiga buscar e baixar as imagens.
+    1. Acesse o portal: [INPE Explorer](http://www.dgi.inpe.br/catalogo/explore)
+    2. Clique em **"Entrar"** (canto superior direito)
+    3. Selecione **"Criar conta"** ou use uma conta Google/Apple existente
+    4. Preencha os dados solicitados (nome, email, organização, etc.)
+    5. Após confirmar o cadastro, você terá acesso ao catálogo CBERS-4A
+    6. **No arquivo `.env`**, configure:
+        ```env
+        INPE_EMAIL=seu-email-que-voce-usou-no-cadastro
+        INPE_PASSWORD=sua-senha-do-portal-inpe
+        ```
+    - O plugin usará essas credenciais para autenticar e baixar as imagens do catálogo INPE.
 *   **Destino**: Certifique-se de escolher uma pasta de saída onde você tenha permissão de escrita.
 
 ---

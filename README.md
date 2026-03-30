@@ -2,12 +2,31 @@
 
 Ferramenta universal para o IDEFLOR que combina dados globais do **Google Earth Engine** (Landsat/Sentinel) e dados nacionais de alta resolução do **INPE** (CBERS-4A).
 
+## ⚠️ Segurança de Credenciais
+
+> **IMPORTANTE**: Este projeto contém arquivos de configuração sensíveis que **NÃO** devem ser commitados. O arquivo `.gitignore` já ignora automaticamente:
+> - `ideflor_gee_downloader/.env` (contém senhas e chaves)
+> - `ideflor_gee_downloader/secrets/` (contém chaves JSON de contas de serviço)
+>
+> **Nunca compartilhe suas credenciais**. Cada usuário deve criar as suas próprias credenciais conforme descrito na documentação.
+
+## 📥 Download (Recomendado)
+
+Baixe a versão empacotada do plugin em **[Releases](https://github.com/samuel-c-santos/plugin-landsat/releases)** - ela já vem sem os arquivos de credenciais. basta extrair e usar.
+
+## 📚 Documentação
+
+| Guia | Descrição |
+|------|------------|
+| [COMO_INSTALAR.md](COMO_INSTALAR.md) | Passo a passo para instalar o plugin no QGIS |
+| [CONFIGURACAO.md](CONFIGURACAO.md) | Como criar credenciais do Google Earth Engine e configurar o ambiente |
+
 ## 1. Estrutura do Projeto
 
 - `ideflor_gee_downloader/`: Pasta do Plugin para QGIS 3.44+.
     - `scripts/`: Lógica de integração GEE e INPE STAC.
-    - `secrets/`: Chaves JSON de Contas de Serviço (não versionado).
-    - `.env`: Configurações de acesso (GEE e Credenciais INPE).
+    - `secrets/`: Chaves JSON de Contas de Serviço (não versionado - configure as suas).
+    - `.env`: Configurações de acesso (não versionado - configure as suas).
 - `requirements.txt`: Dependências Python (cbers4asat, rasterio, geopandas, etc).
 
 ## 2. Configuração e Instalação
@@ -23,6 +42,10 @@ Ferramenta universal para o IDEFLOR que combina dados globais do **Google Earth 
 - **Reprojeção Automática**: O plugin detecta o sistema de coordenadas e converte a área de interesse (AOI) para o sistema nativo do satélite antes do recorte.
 - **Buffer/Borda Flexível**: Aumente a área de interesse para visualizar o contexto da vizinhança.
 - **Integração Visual**: Carregamento automático de GeoTIFFs no QGIS com reamostragem cúbica para melhor visualização.
+
+## Licença
+
+Este projeto está licenciado sob a **Licença MIT** - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## 4. Desenvolvedor
 
