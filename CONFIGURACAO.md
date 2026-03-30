@@ -2,6 +2,8 @@
 
 Este documento descreve detalhadamente o processo de obtenção das credenciais necessárias para usar o Google Earth Engine (GEE) e o INPE.
 
+> 💡 **Tutorial Completo**: Se você é iniciante no Google Earth Engine, segue um [tutorial passo a passo](https://samuelsantos.site/tutorial-gee-primeiros-passos/) que cobre desde a criação da conta até a configuração do ambiente.
+
 ## 1. Configuração do Arquivo .env
 
 O sistema utiliza variáveis de ambiente para gerenciar configurações sensíveis. Crie um arquivo chamado `.env` na pasta do plugin baseado no modelo `.env.example`.
