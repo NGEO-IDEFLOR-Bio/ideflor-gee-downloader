@@ -12,7 +12,7 @@ Ferramenta universal para o IDEFLOR que combina dados globais do **Google Earth 
 
 ## Download (Recomendado)
 
-Baixe a versão empacotada do plugin em **[Releases](https://github.com/samuel-c-santos/plugin-landsat/releases)** basta extrair, configurar as credenciais e usar.
+Baixe a versão empacotada do plugin em **[Releases](https://github.com/NGEO-IDEFLOR-Bio/ideflor-gee-downloader/releases)** basta extrair, configurar as credenciais e usar.
 
 ## Documentação
 
