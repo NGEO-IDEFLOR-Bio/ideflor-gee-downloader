@@ -4,7 +4,7 @@ Este guia descreve os passos necessários para instalar e ativar o plugin de dow
 
 ## 1. Preparação da Pasta
 
-O plugin é fornecido como uma pasta chamada `ideflor_gee_downloader`. Dentro desta pasta, as configurações de acesso (arquivo `.env` e chaves na pasta `secrets`) já devem estar configuradas para a conta do IDEFLOR.
+O plugin é fornecido como uma pasta chamada `ideflor_gee_downloader`. **Você precisará configurar suas próprias credenciais** (veja [CONFIGURACAO.md](CONFIGURACAO.md)). O arquivo `.env` e a pasta `secrets/` não acompanham o repositório por segurança - cada usuário deve criar as suas próprias credenciais.
 
 ### Passos:
 1. Localize a pasta de plugins do seu perfil do QGIS no Windows:

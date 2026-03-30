@@ -1,4 +1,4 @@
-# IDEFLOR - Geo Downloader (Plugin QGIS) - v2.0 Híbrido 🛰️
+# IDEFLOR - Geo Downloader (Plugin QGIS) - v2.0 Híbrido
 
 Ferramenta universal para o IDEFLOR que combina dados globais do **Google Earth Engine** (Landsat/Sentinel) e dados nacionais de alta resolução do **INPE** (CBERS-4A).
 
@@ -10,11 +10,11 @@ Ferramenta universal para o IDEFLOR que combina dados globais do **Google Earth 
 >
 > **Nunca compartilhe suas credenciais**. Cada usuário deve criar as suas próprias credenciais conforme descrito na documentação.
 
-## 📥 Download (Recomendado)
+## Download (Recomendado)
 
 Baixe a versão empacotada do plugin em **[Releases](https://github.com/samuel-c-santos/plugin-landsat/releases)** - ela já vem sem os arquivos de credenciais. basta extrair e usar.
 
-## 📚 Documentação
+## Documentação
 
 | Guia | Descrição |
 |------|------------|
