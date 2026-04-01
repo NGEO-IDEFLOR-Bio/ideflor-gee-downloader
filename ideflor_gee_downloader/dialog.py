@@ -22,7 +22,7 @@ import ee
 try:
     from scripts.gee_utils import (initialize_gee, get_sentinel_image, get_landsat_image, 
                                  get_download_url, download_image, get_cbers_image_inpe, 
-                                 check_cbers_deps)
+                                 check_cbers_deps, get_spot_2008_image)
 except ImportError:
     try:
         from gee_utils import (initialize_gee, get_sentinel_image, get_landsat_image, 
@@ -78,7 +78,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         # Satellite
         params_layout.addWidget(QLabel("Satélite:"), 0, 0)
         self.sat_combo = QComboBox()
-        self.sat_combo.addItems(["Sentinel", "Landsat", "CBERS-4A (MUX/WPM)"])
+        self.sat_combo.addItems(["Sentinel", "Landsat", "CBERS-4A (MUX/WPM)", "SPOT 2008 (Código Florestal)"])
         self.sat_combo.currentTextChanged.connect(self.on_satellite_changed)
         params_layout.addWidget(self.sat_combo, 0, 1)
 
@@ -213,6 +213,10 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             self.semester_combo = QComboBox()
             self.semester_combo.addItems(["1º Semestre", "2º Semestre", "Ambos"])
             self.dynamic_layout.addWidget(self.semester_combo)
+        elif "SPOT 2008" in sat:
+            info_label = QLabel("📡 Mosaico SPOT 2008 - Resolução 5m\nCódigo Florestal (referência: jul/2008)\nDisponível para Brasil via GEE")
+            info_label.setWordWrap(True)
+            self.dynamic_layout.addWidget(info_label)
         else: # Sentinel or CBERS
             self.sentinel_mode_semester = QRadioButton("Composição por Semestre")
             self.sentinel_mode_year = QRadioButton("Análise Anual (Meses)")
@@ -250,12 +254,19 @@ class IDEFLORGeoDownloaderDialog(QDialog):
     def on_satellite_changed(self, text):
         """Update UI options based on selected satellite."""
         is_cbers = "CBERS" in text
+        is_spot_2008 = "SPOT 2008" in text
         # Composition method is not used for CBERS (uses best scene STAC)
-        self.method_combo.setEnabled(not is_cbers)
+        # SPOT 2008 is a fixed mosaic from 2008, no time selection needed
+        self.method_combo.setEnabled(not is_cbers and not is_spot_2008)
         if is_cbers:
             self.method_combo.setToolTip("CBERS utiliza a melhor cena disponível (menor cobertura de nuvens) do INPE.")
+        elif is_spot_2008:
+            self.method_combo.setToolTip("SPOT 2008 é um mosaico fixo de 2008 (Código Florestal).")
         else:
             self.method_combo.setToolTip("")
+        
+        # Disable year entry for SPOT 2008 (fixed date)
+        self.year_entry.setEnabled(not is_spot_2008)
         
         # Also update dynamic fields for satellite-specific options
         self.update_dynamic_fields(text)
@@ -347,6 +358,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             comp_method = self.method_combo.currentData()
             
             is_cbers = "cbers" in sat.lower()
+            is_spot_2008 = "spot" in sat.lower()
 
             # Output dir
             output_dir = self.output_entry.text()
@@ -425,6 +437,12 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                             final_path = get_cbers_image_inpe(region, year, months, car_dir, scale_factor=buffer_factor)
                             if final_path and self.add_to_canvas_check.isChecked():
                                 self.log_signal.load_layer.emit(final_path, os.path.basename(final_path))
+                elif is_spot_2008:
+                    # SPOT 2008 (Mosaico Código Florestal)
+                    self.logger.info(f"  📡 SPOT 2008 - Código Florestal (5m)")
+                    img = get_spot_2008_image(region)
+                    if img:
+                        self._download_and_load(img, region, 2008, "CF", car_dir, 5, "SPOT2008", buffer_factor)
                 else:
                     # Landsat
                     sem_choice = self.semester_combo.currentText()
