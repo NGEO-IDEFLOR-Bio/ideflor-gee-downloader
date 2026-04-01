@@ -27,7 +27,7 @@ except ImportError:
     try:
         from gee_utils import (initialize_gee, get_sentinel_image, get_landsat_image, 
                              get_download_url, download_image, get_cbers_image_inpe, 
-                             check_cbers_deps)
+                             check_cbers_deps, get_spot_2008_image)
     except ImportError as e:
         QgsMessageLog.logMessage(f"Erro ao importar scripts: {e}", "IDEFLOR", Qgis.MessageLevel.Critical)
 
