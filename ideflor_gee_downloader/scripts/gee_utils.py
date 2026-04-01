@@ -52,9 +52,9 @@ try:
     from cbers4asat.tools import rgbn_composite, clip as raster_clip
     from shapely.geometry import Polygon
 except Exception as e:
-    logger.error(f"❌ Erro crítico ao carregar classes globais: {traceback.format_exc()}")
+    logger.error(f"[ERRO] Erro crítico ao carregar classes globais: {traceback.format_exc()}")
     if QgsMessageLog:
-        QgsMessageLog.logMessage(f"❌ Erro crítico ao carregar classes globais: {e}", "IDEFLOR", Qgis.MessageLevel.Critical)
+        QgsMessageLog.logMessage(f"[ERRO] Erro crítico ao carregar classes globais: {e}", "IDEFLOR", Qgis.MessageLevel.Critical)
 
 def initialize_gee():
     """Initializes Google Earth Engine using a service account credentials file."""
@@ -122,7 +122,7 @@ def get_sentinel_image(region, year, start_month, end_month, method='median'):
         image = collection.sort('CLOUDY_PIXEL_PERCENTAGE').first()
         try:
             date = ee.Date(image.get('system:time_start')).format('YYYY-MM-DD').getInfo()
-            logger.info(f"  ✨ Melhor imagem Sentinel selecionada: {date}")
+            logger.info(f"  [OK] Melhor imagem Sentinel selecionada: {date}")
         except:
             pass
         return image
@@ -166,7 +166,7 @@ def get_landsat_image(region, year, semester, method='median'):
         image = collection.sort('CLOUD_COVER').first()
         try:
             date = ee.Date(image.get('system:time_start')).format('YYYY-MM-DD').getInfo()
-            logger.info(f"  ✨ Melhor imagem Landsat selecionada: {date}")
+            logger.info(f"  [OK] Melhor imagem Landsat selecionada: {date}")
         except:
             pass
         return image.select(band_options), band_options
@@ -206,7 +206,7 @@ def download_image(url, output_path):
             with open(output_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            logger.info(f"✅ Download complete: {output_path}")
+            logger.info(f"[OK] Download complete: {output_path}")
             return True
         else:
             logger.error(f"❌ Failed to download {output_path}: HTTP {response.status_code}")
@@ -223,7 +223,7 @@ def get_spot_2008_image(region):
         clipped = image.clip(region)
         # Try to get info to verify access
         clipped.getInfo()
-        logger.info("  📡 SPOT 2008 - Mosaico Código Florestal (5m)")
+        logger.info("  [SPOT] SPOT 2008 - Mosaico Código Florestal (5m)")
         return clipped.select(['R', 'G', 'B'])
     except Exception as e:
         logger.error(f"  ❌ Erro ao acessar SPOT 2008: {e}")
@@ -255,7 +255,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
         yrange = (max(lats) - min(lats)) * scale_factor / 2
         
         bbox = [xmid - xrange, ymid - yrange, xmid + xrange, ymid + yrange]
-        logger.info(f"📐 BBOX com Borda ({scale_factor}x): {bbox}")
+        logger.info(f"[AREA] BBOX com Borda ({scale_factor}x): {bbox}")
         
         # Shapely polygon for clipping later (using the same expanded area)
         poly_aoi = Polygon([ 
@@ -269,7 +269,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
         _, last_day = calendar.monthrange(year, max(months))
         end_date = datetime.date(year, max(months), last_day)
 
-        logger.info(f"🔍 Buscando CBERS-4A no INPE ({start_date} a {end_date})...")
+        logger.info(f"[BUSCA] Buscando CBERS-4A no INPE ({start_date} a {end_date})...")
         
         # We search for MUX (20m) and WPM (8m/2m)
         products = api.query(
@@ -282,7 +282,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
         )
         
         if not products or not products.get('features'):
-            logger.warning(f"⚠️ Nenhuma imagem CBERS encontrada para {year} no período selecionado.")
+            logger.warning(f"[AVISO] Nenhuma imagem CBERS encontrada para {year} no período selecionado.")
             return None
 
         # Sort by cloud cover and take the best
@@ -298,7 +298,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
         cloud_val = get_cloud(best_feature)
         date_str = best_feature['properties'].get('datetime', '').split('T')[0]
         
-        logger.info(f"✨ Melhor cena CBERS encontrada: {scene_id} ({date_str}, {cloud_val}% nuvens)")
+        logger.info(f"[OK] Melhor cena CBERS encontrada: {scene_id} ({date_str}, {cloud_val}% nuvens)")
 
         # Download bands
         # MUX: B5(R), B6(G), B7(B), B8(NIR)
@@ -308,7 +308,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
         temp_dir = os.path.join(output_dir, "temp_cbers")
         os.makedirs(temp_dir, exist_ok=True)
         
-        logger.info(f"📥 Baixando bandas para {scene_id}...")
+        logger.info(f"[DOWN] Baixando bandas para {scene_id}...")
         api.download(
             products={'type': 'FeatureCollection', 'features': [best_feature]},
             bands=bands,
@@ -335,7 +335,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
 
         # Composite
         composite_path = os.path.join(output_dir, f"CBERS_{scene_id}_STACK.tif")
-        logger.info(f"🎨 Criando composição RGB...")
+        logger.info(f"[COMP] Criando composição RGB...")
         rgbn_composite(
             red=b_red, green=b_green, blue=b_blue, nir=b_nir,
             filename=os.path.basename(composite_path),
@@ -345,7 +345,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
         # Clip to AOI
         final_filename = f"CBERS_{year}_{scene_id[:10]}.tif"
         final_path = os.path.join(output_dir, final_filename)
-        logger.info(f"✂️ Recortando para área de interesse...")
+        logger.info(f"[CLIP] Recortando para área de interesse...")
         
         try:
             import geopandas as gpd
@@ -365,7 +365,7 @@ def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
                 outdir=output_dir
             )
         except Exception as clip_err:
-            logger.warning(f"⚠️ Erro no recorte projetado: {clip_err}. Tentando recorte simples...")
+            logger.warning(f"[AVISO] Erro no recorte projetado: {clip_err}. Tentando recorte simples...")
             raster_clip(
                 raster=composite_path,
                 mask=poly_aoi,

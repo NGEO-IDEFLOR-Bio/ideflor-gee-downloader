@@ -219,7 +219,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             self.dynamic_layout.addWidget(landsat_info)
             
         elif "SPOT 2008" in sat:
-            info_label = QLabel("📡 Mosaico SPOT 2007-2009 - Resolução 5m\nCódigo Florestal (referência: jul/2008)\nDisponível para Brasil via GEE")
+            info_label = QLabel("Mosaico SPOT 2007-2009 - Resolução 5m\nCódigo Florestal (referência: jul/2008)\nDisponível para Brasil via GEE")
             info_label.setWordWrap(True)
             self.dynamic_layout.addWidget(info_label)
             
@@ -388,10 +388,10 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                 layer_id = self.layer_combo.currentData()
                 layer = QgsProject.instance().mapLayer(layer_id)
                 if not layer:
-                    self.logger.error("  ❌ Camada selecionada não encontrada.")
+                    self.logger.error("  [ERRO] Camada selecionada não encontrada.")
                     return
                 
-                self.logger.info(f"\n🌍 Área: Extensão da Camada '{layer.name()}'")
+                self.logger.info(f"\n[AREA] Extensão da Camada '{layer.name()}'")
                 extent = layer.extent()
                 src_crs = layer.crs()
                 dest_crs = QgsCoordinateReferenceSystem("EPSG:4326")
@@ -403,7 +403,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                 label = f"Layer_{layer.name()}"
             else:
                 # Default to Map Extent
-                self.logger.info("\n🌍 Área: Extensão Atual do Mapa")
+                self.logger.info("\n[AREA] Extensão Atual do Mapa")
                 extent = self.iface.mapCanvas().extent()
                 src_crs = self.iface.mapCanvas().mapSettings().destinationCrs()
                 dest_crs = QgsCoordinateReferenceSystem("EPSG:4326")
@@ -424,7 +424,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                         # Monthly mode
                         selected_months = [i+1 for i, cb in enumerate(self.month_checks) if cb.isChecked()]
                         for month in selected_months:
-                            self.logger.info(f"  📅 {year}-{month:02d} (Sentinel)")
+                            self.logger.info(f"  [Sentinel] {year}-{month:02d}")
                             img = get_sentinel_image(region, year, month, month, method=comp_method)
                             if img:
                                 self._download_and_load(img, region, year, f"{month:02d}", car_dir, 10, "Sentinel", buffer_factor)
@@ -432,7 +432,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                         # Semester mode
                         for sem in [1, 2]:
                             start_m, end_m = (1, 6) if sem == 1 else (7, 12)
-                            self.logger.info(f"  📅 {year} S{sem} (Sentinel)")
+                            self.logger.info(f"  [Sentinel] {year} S{sem}")
                             img = get_sentinel_image(region, year, start_m, end_m, method=comp_method)
                             if img:
                                 self._download_and_load(img, region, year, f"S{sem}", car_dir, 10, "Sentinel", buffer_factor)
@@ -441,20 +441,20 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                     if self.sentinel_mode_year.isChecked():
                         selected_months = [i+1 for i, cb in enumerate(self.month_checks) if cb.isChecked()]
                         if selected_months:
-                            self.logger.info(f"  📅 {year} (Meses selecionados) - CBERS via INPE")
+                            self.logger.info(f"  [CBERS] {year} (Meses selecionados) - via INPE")
                             final_path = get_cbers_image_inpe(region, year, selected_months, car_dir, scale_factor=buffer_factor)
                             if final_path and self.add_to_canvas_check.isChecked():
                                 self.log_signal.load_layer.emit(final_path, os.path.basename(final_path))
                     else:
                         for sem in [1, 2]:
-                            self.logger.info(f"  📅 {year} S{sem} - CBERS via INPE")
+                            self.logger.info(f"  [CBERS] {year} S{sem} - via INPE")
                             months = [1,2,3,4,5,6] if sem == 1 else [7,8,9,10,11,12]
                             final_path = get_cbers_image_inpe(region, year, months, car_dir, scale_factor=buffer_factor)
                             if final_path and self.add_to_canvas_check.isChecked():
                                 self.log_signal.load_layer.emit(final_path, os.path.basename(final_path))
                 elif is_spot_2008:
                     # SPOT 2008 (Mosaico Código Florestal)
-                    self.logger.info(f"  📡 SPOT 2008 - Código Florestal (5m)")
+                    self.logger.info(f"  [SPOT] Mosaico 2007-2009 (5m)")
                     img = get_spot_2008_image(region)
                     if img:
                         self._download_and_load(img, region, 2008, "CF", car_dir, 5, "SPOT2008", buffer_factor)
@@ -463,12 +463,12 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                     sem_choice = self.semester_combo.currentText()
                     semesters = [1] if sem_choice == "1º Semestre" else [2] if sem_choice == "2º Semestre" else [1, 2]
                     for sem in semesters:
-                        self.logger.info(f"  📅 {year} S{sem} (Landsat)")
+                        self.logger.info(f"  [Landsat] {year} S{sem}")
                         img, _ = get_landsat_image(region, year, sem, method=comp_method)
                         if img:
                             self._download_and_load(img, region, year, f"S{sem}", car_dir, 30, "Landsat", buffer_factor)
 
-            self.logger.info("\n✨ Processo concluído!")
+            self.logger.info("\n[OK] Processo concluído!")
 
         except Exception as e:
             self.logger.error(f"Erro crítico: {e}")
@@ -483,7 +483,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         filepath = os.path.join(car_dir, filename)
         if download_image(url, filepath):
             if self.add_to_canvas_check.isChecked():
-                self.log_signal.log_received.emit(f"  📥 Carregando no QGIS: {filename}", logging.INFO)
+                self.log_signal.log_received.emit(f"  [QGIS] Carregando: {filename}", logging.INFO)
                 self.log_signal.load_layer.emit(filepath, filename)
 
     def add_layer_to_qgis(self, filepath, filename):
@@ -507,10 +507,10 @@ class IDEFLORGeoDownloaderDialog(QDialog):
                         res_filter.setZoomInResamplingMethod(2) # 2 = Cubic
                         res_filter.setZoomOutResamplingMethod(2)
             except Exception as e:
-                self.logger.warning(f"  ⚠️ Não foi possível definir a reamostragem cúbica: {e}")
+                self.logger.warning(f"  [AVISO] Não foi possível definir a reamostragem cúbica: {e}")
             
             QgsProject.instance().addMapLayer(layer)
         else:
-            self.logger.error(f"  ❌ Falha ao carregar camada: {filename}")
+            self.logger.error(f"  [ERRO] Falha ao carregar camada: {filename}")
             self.logger.error(f"     Arquivo não encontrado ou inválido: {filepath}")
 
