@@ -214,7 +214,7 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             self.semester_combo.addItems(["1º Semestre", "2º Semestre", "Ambos"])
             self.dynamic_layout.addWidget(self.semester_combo)
         elif "SPOT 2008" in sat:
-            info_label = QLabel("📡 Mosaico SPOT 2008 - Resolução 5m\nCódigo Florestal (referência: jul/2008)\nDisponível para Brasil via GEE")
+            info_label = QLabel("📡 Mosaico SPOT 2007-2009 - Resolução 5m\nCódigo Florestal (referência: jul/2008)\nDisponível para Brasil via GEE")
             info_label.setWordWrap(True)
             self.dynamic_layout.addWidget(info_label)
         else: # Sentinel or CBERS
@@ -261,12 +261,12 @@ class IDEFLORGeoDownloaderDialog(QDialog):
         if is_cbers:
             self.method_combo.setToolTip("CBERS utiliza a melhor cena disponível (menor cobertura de nuvens) do INPE.")
         elif is_spot_2008:
-            self.method_combo.setToolTip("SPOT 2008 é um mosaico fixo de 2008 (Código Florestal).")
+            self.method_combo.setToolTip("SPOT usa o mosaico de 2008 para Código Florestal.")
         else:
             self.method_combo.setToolTip("")
         
-        # Disable year entry for SPOT 2008 (fixed date)
-        self.year_entry.setEnabled(not is_spot_2008)
+        # Keep year entry enabled for all satellites (SPOT will use mosaic regardless of year entered)
+        # self.year_entry.setEnabled(not is_spot_2008) - Disabled: let user choose any year
         
         # Also update dynamic fields for satellite-specific options
         self.update_dynamic_fields(text)
