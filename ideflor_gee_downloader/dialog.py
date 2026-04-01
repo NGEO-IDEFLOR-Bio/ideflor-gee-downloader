@@ -213,10 +213,20 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             self.semester_combo = QComboBox()
             self.semester_combo.addItems(["1º Semestre", "2º Semestre", "Ambos"])
             self.dynamic_layout.addWidget(self.semester_combo)
+            
+            landsat_info = QLabel("📅 Landsat 5 (1984-2012) • Landsat 7 (1999-2025) • Landsat 8 (2013-2025) • Landsat 9 (2022-2025)")
+            landsat_info.setStyleSheet("color: #666; font-size: 10pt;")
+            self.dynamic_layout.addWidget(landsat_info)
+            
         elif "SPOT 2008" in sat:
             info_label = QLabel("📡 Mosaico SPOT 2007-2009 - Resolução 5m\nCódigo Florestal (referência: jul/2008)\nDisponível para Brasil via GEE")
             info_label.setWordWrap(True)
             self.dynamic_layout.addWidget(info_label)
+            
+            spot_info = QLabel("📅 Período disponível: 2007-2009")
+            spot_info.setStyleSheet("color: #666; font-size: 10pt;")
+            self.dynamic_layout.addWidget(spot_info)
+            
         else: # Sentinel or CBERS
             self.sentinel_mode_semester = QRadioButton("Composição por Semestre")
             self.sentinel_mode_year = QRadioButton("Análise Anual (Meses)")
@@ -239,6 +249,11 @@ class IDEFLORGeoDownloaderDialog(QDialog):
             self.month_group.setVisible(False)
             
             self.sentinel_mode_year.toggled.connect(self.month_group.setVisible)
+            
+            if "Sentinel" in sat:
+                sentinel_info = QLabel("📅 Sentinel-2 disponível: 2015-hoje")
+                sentinel_info.setStyleSheet("color: #666; font-size: 10pt;")
+                self.dynamic_layout.addWidget(sentinel_info)
 
     def populate_layers(self):
         self.layer_combo.clear()
