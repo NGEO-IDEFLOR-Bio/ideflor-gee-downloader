@@ -232,10 +232,10 @@ def get_spot_2008_image(region):
 
 def get_cbers_image_inpe(region_ee, year, months, output_dir, scale_factor=2):
     """Downloads and processes CBERS-4A imagery from INPE STAC with an optional border."""
-    if not has_deps:
-        logger.error(f"❌ Erro nas dependências CBERS: {err}")
+    if not HAS_CBERS_DEPS:
+        logger.error(f"❌ Erro nas dependências CBERS: {DEPS_ERROR}")
         if QgsMessageLog:
-            QgsMessageLog.logMessage(f"❌ Erro nas dependências CBERS: {err}", "IDEFLOR", Qgis.MessageLevel.Critical)
+            QgsMessageLog.logMessage(f"❌ Erro nas dependências CBERS: {DEPS_ERROR}", "IDEFLOR", Qgis.MessageLevel.Critical)
         return None
     try:
         inpe_email = os.getenv('INPE_EMAIL')
